@@ -1,3 +1,4 @@
+import sys
 import requests
 import sqlite3
 
@@ -24,13 +25,36 @@ def save_to_db(data):
     cursor = conn.cursor()
     for data in data:
         cursor.execute(
-            "INSERT INTO rates (series_id, date, value) VALUES (?, ?, ?)",
+            "INSERT OR IGNORE INTO rates (series_id, date, value) VALUES (?, ?, ?)",
             (data['seriesId'], data['date'], data['value']),
         )
     conn.commit()
     conn.close()
 
 
-init_db()
-data = get_observations()
-save_to_db(data)
+def main():
+    try:
+        print("Starting the FX rates update process...")
+        init_db()
+        data = get_observations()
+        if data:
+            save_to_db(data)
+            print("FX rates updated successfully!")
+        else:
+            print("No new FX rates found.")
+
+    except sqlite3.Error as e:
+        print(f"An error with database occurred: {e}")
+        sys.exit(1)
+    except requests.exceptions.RequestException as e:
+        print(f"A network error occurred while fetching data: {e}")
+        sys.exit(1)
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
+        sys.exit(1)
+
+    print("Process completed.")
+
+
+if __name__ == "__main__":
+    main()
